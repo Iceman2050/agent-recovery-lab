@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-recovery-lab"
+version = "0.1.0"
+description = "Failure-injection and recovery-testing toolkit for AI agent workflows: timeouts, duplicate callbacks, worker crashes, partial responses, repeated webhooks, delayed approvals, provider interruptions, uncertain outcomes."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "Ingenious AI"}]
+keywords = ["ai-agents", "fault-injection", "resilience-testing", "idempotency", "chaos-engineering"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+agent-recovery = "agent_recovery_lab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agent_recovery_lab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

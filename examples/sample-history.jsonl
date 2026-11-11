@@ -1,0 +1,4 @@
+{"event_id": "evt_101", "agent_id": "demo-agent", "event_type": "tool.call.started", "action_id": "act_pay_1", "action_type": "payment.charge", "summary": "charge started", "timestamp": "2026-11-10T00:00:01Z"}
+{"event_id": "evt_102", "agent_id": "demo-agent", "event_type": "webhook.received", "action_id": "act_hook_1", "action_type": "webhook.payment_succeeded", "summary": "webhook delivered", "timestamp": "2026-11-10T00:00:02Z"}
+{"event_id": "evt_102", "agent_id": "demo-agent", "event_type": "webhook.received", "action_id": "act_hook_1", "action_type": "webhook.payment_succeeded", "summary": "webhook redelivered by provider retry", "timestamp": "2026-11-10T00:00:03Z"}
+{"event_id": "evt_103", "agent_id": "demo-agent", "event_type": "tool.call.completed", "action_id": "act_note_1", "action_type": "message.send", "summary": "clean completed action, no scenario derived", "timestamp": "2026-11-10T00:00:04Z"}
