@@ -15,7 +15,7 @@ def test_scenario_passes(name):
 
 def test_all_scenarios_present_and_passing():
     results = run_all()
-    assert len(results) == 8
+    assert len(results) == 11
     assert all(r["passed"] for r in results)
 
 

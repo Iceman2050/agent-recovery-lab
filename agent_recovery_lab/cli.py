@@ -34,6 +34,9 @@ def _print_human(payload):
         origin = f" (derived: {r['derived_from']})" if r.get("derived") else ""
         print(f"[{mark}] {r['name']}{origin} — {r['property']}")
         print(f"       side_effects={r['side_effects']} · {r['detail']}")
+        for op in r.get("operations") or []:
+            from .lifecycle import summary_line
+            print(f"       flight-recorder: {summary_line(op)}")
     print(f"\n{payload['passed']}/{payload['total']} scenarios passed.")
     print(SCOPE_NOTE)
 
@@ -45,6 +48,13 @@ def cmd_doctor(_args):
     print("isolation: in-process fake gateway, in-memory state only; no network calls, "
           "no real payments, no real messages, no real database writes")
     print(f"scenarios testable ({len(SCENARIOS)}): {', '.join(SCENARIOS)}")
+    print("acceptance gates (3): lost-ack-after-success, repeated-webhook-callback, worker-interruption")
+    print("flight recorder: attempt lifecycle per business operation (created, authorized, started, "
+          "result, retry, reconciliation) in AFR record shape, one stable operation ID")
+    print("policies: example Auth Gateway policies (retry permission, spend ceiling, "
+          "repeated-sensitive approval) in agent_recovery_lab.policies")
+    print("failover eligibility: 1 scenario (failover-eligibility) — ambiguous outcomes verdict "
+          "RECONCILE or ESCALATE, never auto-replay")
     print("history import: JSONL action history (Agent Flight Recorder-compatible event shape)")
     print("status: OK — everything above is testable locally")
     return 0

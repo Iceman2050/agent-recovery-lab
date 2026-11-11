@@ -75,3 +75,30 @@ class FakeGateway:
         if action is None:
             return len(self._effects)
         return sum(1 for e in self._effects if e["action"] == action)
+
+
+class NonIdempotentGateway(FakeGateway):
+    """Fault fixture: a downstream that IGNORES idempotency keys.
+
+    Every apply() creates a new side effect under a fresh internal key, so
+    lookup() by the caller's key always misses — exactly the broken
+    downstream that defeats reconcile-by-key and makes a retry duplicate
+    the business operation. Used by the lost-ack counter-case: the harness
+    must report that run as a failure, never a pass.
+    """
+
+    def apply(self, idempotency_key, action, payload=None):
+        if self.interrupt_next:
+            self.interrupt_next = False
+            raise ProviderUnavailable("simulated provider interruption (nothing applied)")
+        unique_key = f"{idempotency_key}#{len(self._effects) + 1}"
+        record = {
+            "seq": len(self._effects) + 1,
+            "idempotency_key": unique_key,
+            "action": action,
+            "payload": dict(payload or {}),
+            "status": "applied",
+        }
+        self._effects.append(record)
+        self._by_key[unique_key] = record
+        return record

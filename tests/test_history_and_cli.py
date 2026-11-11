@@ -75,17 +75,18 @@ def test_real_afr_record_shape_decision_without_outcome(tmp_path):
 def test_cli_doctor(capsys):
     assert main(["doctor"]) == 0
     out = capsys.readouterr().out
-    assert "scenarios testable (8)" in out
+    assert "scenarios testable (11)" in out
+    assert "acceptance gates (3)" in out
     assert "no network calls" in out
 
 
 def test_cli_test_all_and_report(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     assert main(["test", "--all"]) == 0
-    assert "8/8 scenarios passed" in capsys.readouterr().out
+    assert "11/11 scenarios passed" in capsys.readouterr().out
     assert main(["report", "--format", "json"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["total"] == 8 and payload["passed"] == 8
+    assert payload["total"] == 11 and payload["passed"] == 11
 
 
 def test_cli_single_scenario(tmp_path, monkeypatch, capsys):
