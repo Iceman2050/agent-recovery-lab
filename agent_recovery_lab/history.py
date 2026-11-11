@@ -7,6 +7,14 @@ Accepted line shapes (AFR-compatible):
 - AFR ingest shape:
   {"agent_id": ..., "action_type": ..., "tool_name": ..., "status": "started"|"completed"|...,
    "timestamp": ..., "action_id"/"idempotency_key": ... (optional)}
+- Real AFR stored/exported record shape (from AFR source, app/main.py —
+  records returned by GET /v1/actions):
+  {"seq": ..., "created_at": ..., "action_type": ..., "tool_name": ...,
+   "input_summary": ..., "output_summary": ..., "metadata": {...}, "prev_hash": ..., "hash": ...}
+  Lifecycle is encoded in action_type/tool_name/metadata: e.g. a
+  `gateway_decision` record and its `refund_outcome` record share
+  `metadata.request_id`; a decision with no outcome record for its
+  request_id derives an uncertain-outcome scenario.
 
 Derivation rules (see OVERLAP-GATE.md). A history with no derivable anomaly
 derives ZERO scenarios and says so — passes are never invented.
@@ -37,8 +45,13 @@ def load_history(path):
     return events
 
 
+def _meta(ev):
+    m = ev.get("metadata")
+    return m if isinstance(m, dict) else {}
+
+
 def _kind(ev):
-    raw = str(ev.get("event_type") or ev.get("status") or ev.get("action_type") or "").lower()
+    raw = " ".join(str(ev.get(k) or "") for k in ("event_type", "status", "action_type", "tool_name")).lower()
     if "webhook" in raw:
         return "webhook"
     if any(t in raw for t in ("timeout", "timed_out", "timed-out")):
@@ -53,7 +66,11 @@ def _kind(ev):
 
 
 def _action_key(ev):
+    m = _meta(ev)
     return str(ev.get("action_id") or ev.get("correlation_id") or ev.get("idempotency_key")
+               or ev.get("request_id")
+               or m.get("action_id") or m.get("correlation_id") or m.get("idempotency_key")
+               or m.get("request_id")
                or ev.get("event_id") or ev.get("id") or "")
 
 
@@ -94,6 +111,24 @@ def derive(events):
                 derived.append({"name": "uncertain-outcome",
                                 "derived_from": f"action {akey} started but never completed",
                                 "event_id": akey, "action": _action_name(group[0])})
+    # AFR decision/outcome pairing (real AFR pattern: a `gateway_decision`
+    # record and its `refund_outcome` record share a request_id — see AFR's
+    # own test_mvcp_coverage). A decision/initiation carrying a request_id
+    # with NO outcome record for that id is an uncertain outcome.
+    by_request = {}
+    for e in events:
+        rid = str(e.get("request_id") or _meta(e).get("request_id") or "")
+        if rid:
+            by_request.setdefault(rid, []).append(e)
+    for rid, group in by_request.items():
+        types = " ".join(str(e.get("action_type") or "") for e in group).lower()
+        initiated = any(t in types for t in ("decision", "started", "initiated"))
+        resolved = any(t in types for t in ("outcome", "complet", "succeed", "success", "fail"))
+        if initiated and not resolved and not any(
+                d["name"] == "uncertain-outcome" and rid in d["derived_from"] for d in derived):
+            derived.append({"name": "uncertain-outcome",
+                            "derived_from": f"request {rid} has a decision/initiation record but no outcome record",
+                            "event_id": rid, "action": _action_name(group[0])})
     return derived
 
 

@@ -50,6 +50,28 @@ def test_afr_ingest_shape_supported(tmp_path):
     assert [d["name"] for d in derive(events)] == ["uncertain-outcome"]
 
 
+def test_real_afr_record_shape_decision_without_outcome(tmp_path):
+    # Real AFR exported-record shape (seq/created_at/action_type/tool_name/
+    # summaries/metadata/hash-chain fields), decision/outcome pairing by
+    # metadata.request_id — pattern from AFR's own test_mvcp_coverage.
+    rows = [
+        {"seq": 1, "created_at": "2026-11-10T00:00:01Z", "action_type": "gateway_decision",
+         "tool_name": "refund", "input_summary": "refund $49", "output_summary": "ALLOW",
+         "metadata": {"request_id": "req_1"}, "prev_hash": "a", "hash": "b"},
+        {"seq": 2, "created_at": "2026-11-10T00:00:02Z", "action_type": "gateway_decision",
+         "tool_name": "refund", "input_summary": "refund $10", "output_summary": "ALLOW",
+         "metadata": {"request_id": "req_2"}, "prev_hash": "b", "hash": "c"},
+        {"seq": 3, "created_at": "2026-11-10T00:00:03Z", "action_type": "refund_outcome",
+         "tool_name": "refund", "input_summary": "", "output_summary": "refunded",
+         "metadata": {"request_id": "req_2"}, "prev_hash": "c", "hash": "d"},
+    ]
+    events = load_history(_write(tmp_path, rows))
+    derived = derive(events)
+    assert [d["name"] for d in derived] == ["uncertain-outcome"]
+    assert "req_1" in derived[0]["derived_from"]
+    assert all(r["passed"] for r in run_derived(events))
+
+
 def test_cli_doctor(capsys):
     assert main(["doctor"]) == 0
     out = capsys.readouterr().out

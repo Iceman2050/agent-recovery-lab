@@ -17,9 +17,9 @@ Full evidence: OVERLAP-GATE.md.
 ```
 $ python -m pytest -q
 ...........................                                              [100%]
-27 passed in 0.13s
+28 passed
 ```
-(8 parametrized scenario tests + scenario aggregates + gateway/runner units +
+(8 parametrized scenario tests + 1 real-AFR-record-shape test + scenario aggregates + gateway/runner units +
 history derivation incl. AFR ingest shape + CLI smoke tests.)
 
 ## Real run transcript (venv install, Python 3.12.3)

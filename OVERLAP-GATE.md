@@ -25,10 +25,26 @@ Date: 2026-11-11 · Verdict: **PROCEED — no functional overlap; interface-leve
      and an ISO-8601 timestamp. AFR's own ingest shape adds `action_type` / `tool_name` /
      `status`-style fields; both shapes describe the same thing: an ordered action history.
 
-3. **Repo check** — `gh repo list Iceman2050` (2026-11-11): no `agent-recovery-lab` repo
+3. **AFR platform source** — `~/workspace/platforms/agent-flight-recorder/` (the fleet
+   platform app, a server application — not an importable client package, so still no
+   code coupling):
+   - `app/main.py`: agents POST to `/v1/actions`; records returned by `GET /v1/actions`
+     carry `seq, created_at, action_type, tool_name, input_summary, output_summary,
+     metadata, prev_hash, hash` — an ordered, hash-chained action history with **no
+     separate status field**: lifecycle/outcome is encoded in `action_type`/`tool_name`/
+     `metadata`.
+   - `wrappers/afr_wrappers/core.py::record(action_type, tool_name, input_summary,
+     output_summary, metadata)` posts `{agent_id, action_type, tool_name, ...}`.
+   - AFR's own `tests/test_mvcp_coverage.py` shows the pairing convention: a
+     `gateway_decision` record and its `refund_outcome` record share a `request_id`
+     (carried in `metadata`). A decision whose request_id has no outcome record is
+     exactly a real-world uncertain outcome — the importer derives a scenario from it.
+   - `app/db.py::append_action(workspace_id, agent, action_type, tool_name, ...)` confirms
+     the stored-ledger shape above.
+
+4. **Repo check** — `gh repo list Iceman2050` (2026-11-11): no `agent-recovery-lab` repo
    existed before this build, and no existing repo performs failure injection or recovery
-   testing. AFR itself has no standalone public source repo in the list; its source was not
-   found as a cleanly importable package under `~/workspace`, so no code coupling is attempted.
+   testing.
 
 ## Boundary
 
@@ -52,7 +68,10 @@ recorded history**:
 - the same `event_id` (or the same `idempotency_key`) recorded more than once → a
   **duplicate-event** scenario;
 - repeated `webhook.*` deliveries of one event → a **repeated-webhook** scenario;
-- a record whose status/type says `timeout`/`timed_out` → a **timeout** scenario.
+- a record whose status/type says `timeout`/`timed_out` → a **timeout** scenario;
+- a decision/initiation record (e.g. AFR's `gateway_decision`) whose `request_id`
+  (top-level or in `metadata`) has **no outcome record** (e.g. `refund_outcome`) →
+  an **uncertain-outcome** scenario — AFR's real decision/outcome pairing convention.
 
 Derived scenarios run against the same isolated in-process harness as the built-in
 catalogue. If a history contains no derivable anomaly, the tool says so and derives zero
